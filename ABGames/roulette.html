@@ -1,0 +1,779 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Roulette</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Outfit:wght@400;600;800&display=swap');
+    
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: 'Outfit', system-ui, sans-serif;
+      background: #0a0f1e;
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding: 20px;
+      overflow-x: hidden;
+    }
+
+    /* Animated background */
+    .game-bg {
+      position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    }
+    .bg-symbol {
+      position: absolute;
+      font-size: var(--sz);
+      opacity: var(--op);
+      animation: bgFloat var(--dur) ease-in-out infinite;
+      animation-delay: var(--delay);
+    }
+    @keyframes bgFloat {
+      0%, 100% { transform: translate(0,0) rotate(0deg); }
+      50% { transform: translate(var(--tx), var(--ty)) rotate(var(--rot)); }
+    }
+
+    .wrap { max-width: 1400px; margin: 0 auto; }
+
+    .header {
+      text-align: center; margin-bottom: 24px;
+    }
+    .header h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 42px; font-weight: 900;
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 50%, #b91c1c 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 6px;
+    }
+    .header p { color: #64748b; font-size: 13px; }
+
+    .back-btn {
+      display: inline-block; padding: 8px 16px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.15);
+      border-radius: 10px; color: #cbd5e1;
+      text-decoration: none; font-weight: 700; font-size: 13px;
+      margin-bottom: 16px; transition: all .15s;
+    }
+    .back-btn:hover { background: rgba(255,255,255,.12); transform: translateY(-2px); }
+
+    .layout { display: flex; gap: 16px; align-items: flex-start; }
+    
+    /* Stats sidebar */
+    .sidebar { width: 200px; flex-shrink: 0; display: flex; flex-direction: column; gap: 12px; }
+    .stat-card {
+      background: #1e293b; border: 1px solid rgba(255,255,255,.1);
+      border-radius: 16px; padding: 16px;
+    }
+    .slabel { font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .08em; color: #64748b; margin-bottom: 8px; }
+    .svalue { font-size: 26px; font-weight: 800; line-height: 1; }
+    .svalue.good { color: #86efac; }
+    .svalue.bad { color: #fca5a5; }
+    .ssub { font-size: 11px; color: #64748b; margin-top: 4px; }
+
+    /* Vault */
+    .vault-card { margin-top: 12px; }
+    .vault-input {
+      width: 100%; padding: 10px; border-radius: 10px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.15);
+      color: #e2e8f0; font-size: 14px; font-weight: 700;
+      margin: 10px 0 8px; outline: none;
+    }
+    .vault-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .vault-btn {
+      padding: 10px 6px; border-radius: 10px; border: 0;
+      font-size: 12px; font-weight: 800; cursor: pointer;
+      transition: transform .12s;
+    }
+    .vault-btn:hover { transform: translateY(-2px); }
+    .vault-btn.deposit { background: #fde68a; color: #1c1000; }
+    .vault-btn.withdraw { background: rgba(251,191,36,.15); color: #fde68a; }
+    .vault-msg { font-size: 11px; font-weight: 700; text-align: center;
+      min-height: 16px; margin-top: 6px; }
+    .vault-msg.ok { color: #86efac; }
+
+    /* Rules button */
+    .rules-btn {
+      cursor: pointer; padding: 14px; text-align: center;
+      font-weight: 800; font-size: 13px; color: #93c5fd;
+      border: 1px solid rgba(147,197,253,.3);
+      background: rgba(147,197,253,.1);
+      transition: all .15s;
+    }
+    .rules-btn:hover { background: rgba(147,197,253,.2); }
+
+    /* Main game */
+    .main { flex: 1; }
+    .game-box {
+      background: #1e293b; border: 1px solid rgba(255,255,255,.1);
+      border-radius: 20px; padding: 24px;
+    }
+
+    /* Money bar */
+    .money-bar {
+      display: flex; gap: 24px; align-items: center;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 12px; padding: 12px 16px; margin-bottom: 20px;
+    }
+    .money-block { display: flex; flex-direction: column; gap: 2px; }
+    .mlabel { font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .07em; color: #64748b; }
+    .mvalue { font-size: 18px; font-weight: 800; color: #a7f3d0; }
+
+    /* Wheel */
+    .wheel-area { text-align: center; margin-bottom: 24px; }
+    .wheel-container {
+      position: relative; width: 400px; height: 400px; margin: 0 auto 16px;
+    }
+    .wheel-pointer {
+      position: absolute; top: -12px; left: 50%;
+      transform: translateX(-50%);
+      font-size: 32px; color: #fde68a;
+      filter: drop-shadow(0 0 8px rgba(253,230,138,0.8));
+      z-index: 10;
+    }
+    .wheel {
+      width: 400px; height: 400px; 
+      border-radius: 50%; position: relative;
+      border: 16px solid #b8972a;
+      box-shadow: 0 0 0 5px #1e293b, 0 10px 40px rgba(0,0,0,.7);
+      transition: transform 3s ease-out;
+      background: #1a1a1a;
+      overflow: hidden;
+    }
+    .wheel canvas {
+      width: 100%; height: 100%;
+    }
+    .wheel-center {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 60px; height: 60px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #d4af37 0%, #b8972a 100%);
+      box-shadow: 0 2px 8px rgba(0,0,0,.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      z-index: 10;
+      pointer-events: none;
+    }
+    
+    .result { 
+      font-size: 48px; font-weight: 900; color: #f8fafc; 
+      margin: 16px 0 8px; transition: transform .2s;
+    }
+    .result.red { color: #ef4444; }
+    .result.black { color: #e2e8f0; }
+    .result-label { color: #94a3b8; font-size: 14px; }
+
+    /* Betting */
+    .bet-grid { 
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); 
+      gap: 10px; margin-bottom: 16px; 
+    }
+    .bet-btn {
+      padding: 14px; border-radius: 12px; border: 2px solid;
+      background: rgba(255,255,255,.05); color: #cbd5e1;
+      font-weight: 800; font-size: 14px; cursor: pointer;
+      transition: all .15s; position: relative;
+    }
+    .bet-btn:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,.4); }
+    .bet-btn.red { border-color: #dc2626; }
+    .bet-btn.black { border-color: #cbd5e1; }
+    .bet-btn.green { border-color: #22c55e; }
+    .bet-btn.selected { background: rgba(34,197,94,.2); border-color: #22c55e; }
+    .bet-amount { 
+      position: absolute; top: 4px; right: 6px;
+      font-size: 11px; font-weight: 800; color: #fde68a; 
+    }
+
+    .chips { 
+      display: flex; gap: 8px; flex-wrap: wrap; 
+      justify-content: center; margin: 16px 0; 
+    }
+    .chip {
+      width: 54px; height: 54px; border-radius: 50%;
+      border: 3px dashed rgba(255,255,255,.25);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 800; cursor: pointer;
+      transition: transform .12s; opacity: 0.5;
+    }
+    .chip:hover { transform: translateY(-3px); }
+    .chip.active { opacity: 1; }
+    .chip-1 { background: #1e1e1e; color: #e5e5e5; border-color: #737373; }
+    .chip-5 { background: #172554; color: #bfdbfe; border-color: #3b82f6; }
+    .chip-10 { background: #1e3a5f; color: #93c5fd; border-color: #3b82f6; }
+    .chip-25 { background: #14532d; color: #86efac; border-color: #22c55e; }
+    .chip-50 { background: #4c1d95; color: #c4b5fd; border-color: #8b5cf6; }
+    .chip-100 { background: #7c2d12; color: #fdba74; border-color: #f97316; }
+    .chip-250 { background: #831843; color: #fbcfe8; border-color: #ec4899; }
+    .chip-500 { background: #422006; color: #fed7aa; border-color: #ea580c; }
+    .chip-1000 { background: #581c87; color: #e9d5ff; border-color: #a855f7; }
+    .chip-2500 { background: #7f1d1d; color: #fecaca; border-color: #ef4444; }
+
+    .quick-bets { 
+      display: flex; gap: 8px; justify-content: center; margin: 12px 0 16px; 
+    }
+    .quick-btn {
+      padding: 10px 20px; border-radius: 10px; border: 0;
+      background: rgba(251,191,36,.15); color: #fde68a;
+      border: 1px solid rgba(251,191,36,.3);
+      font-weight: 800; font-size: 13px; cursor: pointer;
+      transition: transform .12s, background .15s;
+    }
+    .quick-btn:hover { background: rgba(251,191,36,.25); transform: translateY(-2px); }
+    .quick-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+    .controls { 
+      display: flex; gap: 10px; justify-content: center; 
+      margin-top: 16px; flex-wrap: wrap; 
+    }
+    button {
+      padding: 12px 24px; border-radius: 12px; border: 0;
+      font-weight: 800; font-size: 14px; cursor: pointer;
+      transition: transform .12s;
+    }
+    button:hover { transform: scale(1.05); }
+    button:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+    .btn-spin { background: #ef4444; color: #fef2f2; }
+    .btn-clear { background: rgba(255,255,255,.08); color: #cbd5e1; }
+    .btn-restart { background: #f59e0b; color: #451a03; }
+
+    /* Modal */
+    .modal {
+      position: fixed; inset: 0; z-index: 2000;
+      background: rgba(0,0,0,.85); backdrop-filter: blur(6px);
+      display: none; align-items: center; justify-content: center;
+      opacity: 0; transition: opacity .25s;
+    }
+    .modal.open { display: flex; opacity: 1; }
+    .modal-box {
+      background: #1e293b; border: 1px solid rgba(255,255,255,.15);
+      border-radius: 20px; padding: 28px; max-width: 550px;
+      width: 90%; max-height: 85vh; overflow-y: auto;
+    }
+    .modal-header { 
+      display: flex; justify-content: space-between;
+      align-items: center; margin-bottom: 20px; 
+    }
+    .modal-title { font-size: 22px; font-weight: 800; color: #f8fafc; }
+    .modal-close {
+      background: rgba(255,255,255,.08); 
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 8px; padding: 6px 12px; color: #94a3b8;
+      font-weight: 700; cursor: pointer; font-size: 13px;
+    }
+    .modal-close:hover { background: rgba(255,255,255,.15); }
+    .modal-content { color: #cbd5e1; line-height: 1.8; }
+    .modal-content h3 {
+      font-size: 15px; font-weight: 800; color: #ef4444;
+      margin: 18px 0 8px; text-transform: uppercase; letter-spacing: .05em;
+    }
+    .modal-content p { margin-bottom: 12px; font-size: 14px; }
+    .modal-content ul { margin: 8px 0 8px 20px; font-size: 14px; }
+    .modal-content li { margin-bottom: 6px; }
+  </style>
+</head>
+<body>
+
+<div class="game-bg" id="gameBg"></div>
+
+<div class="wrap">
+  <a href="index.html" class="back-btn">← Back to ABGames</a>
+
+  <div class="header">
+    <h1>🎰 Roulette</h1>
+    <p>Place your bets and spin the wheel</p>
+  </div>
+
+  <div class="layout">
+    <!-- Stats Sidebar -->
+    <div class="sidebar">
+      <div class="stat-card">
+        <div class="slabel">Win Streak</div>
+        <div class="svalue good" id="streak">0</div>
+        <div class="ssub" id="streakLabel">Current streak</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="slabel">Spins</div>
+        <div class="svalue" id="spinsWon">0</div>
+        <div class="ssub">Won</div>
+        <div class="svalue bad" id="spinsLost" style="margin-top:8px">0</div>
+        <div class="ssub">Lost</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="slabel">Net Profit</div>
+        <div class="svalue" id="netProfit">$0</div>
+      </div>
+
+      <!-- Vault -->
+      <div class="stat-card vault-card">
+        <div class="slabel">🏦 Vault</div>
+        <div class="svalue" style="color:#fde68a;font-size:22px" id="vaultAmount">$0</div>
+        <input class="vault-input" id="vaultInput" type="number" placeholder="Amount..." />
+        <div class="vault-btns">
+          <button class="vault-btn deposit" id="btnDeposit">⬇ Deposit</button>
+          <button class="vault-btn withdraw" id="btnWithdraw">⬆ Withdraw</button>
+        </div>
+        <div class="vault-msg" id="vaultMsg"></div>
+      </div>
+
+      <!-- Rules Button -->
+      <button class="stat-card rules-btn" id="btnRules">
+        📖 How to Play
+      </button>
+    </div>
+
+    <!-- Main Game -->
+    <div class="main">
+      <div class="game-box">
+        <div class="money-bar">
+          <div class="money-block">
+            <span class="mlabel">Balance</span>
+            <span class="mvalue" id="balance">$500</span>
+          </div>
+          <div class="money-block">
+            <span class="mlabel">Total Bet</span>
+            <span class="mvalue" style="color:#fde68a" id="totalBet">$0</span>
+          </div>
+        </div>
+
+        <div class="wheel-area">
+          <div class="wheel-container">
+            <div class="wheel-pointer">▼</div>
+            <div class="wheel" id="wheel">
+              <canvas id="wheelCanvas" width="400" height="400"></canvas>
+              <div class="wheel-center">🎰</div>
+            </div>
+          </div>
+          <div class="result" id="result">-</div>
+          <div class="result-label" id="resultLabel">Place your bets</div>
+        </div>
+
+        <div class="bet-grid">
+          <button class="bet-btn red" data-bet="red">RED</button>
+          <button class="bet-btn black" data-bet="black">BLACK</button>
+          <button class="bet-btn green" data-bet="even">EVEN</button>
+          <button class="bet-btn green" data-bet="odd">ODD</button>
+          <button class="bet-btn green" data-bet="low">1-18</button>
+          <button class="bet-btn green" data-bet="high">19-36</button>
+        </div>
+
+        <div class="chips">
+          <div class="chip chip-1" data-value="1">$1</div>
+          <div class="chip chip-5" data-value="5">$5</div>
+          <div class="chip chip-10" data-value="10">$10</div>
+          <div class="chip chip-25" data-value="25">$25</div>
+          <div class="chip chip-50" data-value="50">$50</div>
+          <div class="chip chip-100" data-value="100">$100</div>
+          <div class="chip chip-250" data-value="250">$250</div>
+          <div class="chip chip-500" data-value="500">$500</div>
+          <div class="chip chip-1000" data-value="1000">$1K</div>
+          <div class="chip chip-2500" data-value="2500">$2.5K</div>
+        </div>
+
+        <div class="quick-bets">
+          <button class="quick-btn" id="btnHalfBank">½ Bank</button>
+          <button class="quick-btn" id="btnAllIn">All In 🔥</button>
+        </div>
+
+        <div class="controls">
+          <button class="btn-spin" id="btnSpin">🎲 SPIN</button>
+          <button class="btn-clear" id="btnClear">Clear Bets</button>
+          <button class="btn-restart" id="btnRestart">🔄 Restart ($500)</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Rules Modal -->
+<div class="modal" id="rulesModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2 class="modal-title">📖 How to Play Roulette</h2>
+      <button class="modal-close" id="closeRules">✕ Close</button>
+    </div>
+    <div class="modal-content">
+      <h3>Goal</h3>
+      <p>Predict where the ball will land and place your bets.</p>
+
+      <h3>Betting Options</h3>
+      <ul>
+        <li><strong>RED/BLACK</strong> — Bet on color (pays 2:1)</li>
+        <li><strong>EVEN/ODD</strong> — Bet on even/odd numbers (pays 2:1)</li>
+        <li><strong>1-18 / 19-36</strong> — Bet on number range (pays 2:1)</li>
+      </ul>
+
+      <h3>How to Play</h3>
+      <ol style="margin-left:20px">
+        <li>Select a chip value</li>
+        <li>Click bet buttons to place chips</li>
+        <li>Click SPIN to start</li>
+        <li>Win 2× your bet on winning bets!</li>
+      </ol>
+
+      <h3>Quick Actions</h3>
+      <ul>
+        <li><strong>½ Bank</strong> — Bet half your balance</li>
+        <li><strong>All In 🔥</strong> — Bet everything</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+// Game state
+let balance = 500, vault = 0, netProfit = 0, streak = 0, spinsWon = 0, spinsLost = 0;
+let chipValue = 0, bets = {}, spinning = false, lastClickedBet = null;
+
+// Roulette numbers
+const wheelNumbers = [0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
+const reds = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
+const blacks = [2,4,6,8,10,11,13,15,17,20,22,24,26,28,29,31,33,35];
+
+// Sound context
+const thockCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playThock() {
+  try {
+    const t = thockCtx.currentTime;
+    const o = thockCtx.createOscillator();
+    const g = thockCtx.createGain();
+    o.connect(g); g.connect(thockCtx.destination);
+    o.type = 'sine';
+    o.frequency.setValueAtTime(200, t);
+    o.frequency.exponentialRampToValueAtTime(55, t + 0.07);
+    g.gain.setValueAtTime(0.3, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
+    o.start(t); o.stop(t + 0.09);
+  } catch(e) {}
+}
+
+// Background
+(function() {
+  const c = document.getElementById('gameBg');
+  const symbols = ['💎','💎','💎','💰','🎰','🎲','🍀','⭐'];
+  for(let i=0;i<45;i++) {
+    const el = document.createElement('div');
+    el.className='bg-symbol';
+    el.textContent = symbols[Math.floor(Math.random()*symbols.length)];
+    el.style.cssText=`left:${Math.random()*100}%;top:${Math.random()*100}%;--sz:${20+Math.random()*60}px;--op:${0.02+Math.random()*0.06};--dur:${6+Math.random()*12}s;--delay:${-(Math.random()*12)}s;--tx:${(Math.random()-.5)*120}px;--ty:${(Math.random()-.5)*120}px;--rot:${Math.random()*50-25}deg`;
+    c.appendChild(el);
+  }
+})();
+
+// Draw wheel
+(function() {
+  const canvas = document.getElementById('wheelCanvas');
+  const ctx = canvas.getContext('2d');
+  const centerX = 200, centerY = 200, radius = 190;
+  const segmentAngle = (2 * Math.PI) / 37;
+  
+  wheelNumbers.forEach((num, i) => {
+    const startAngle = -Math.PI / 2 + (i * segmentAngle);
+    const endAngle = startAngle + segmentAngle;
+    const isRed = reds.includes(num);
+    ctx.fillStyle = num === 0 ? '#16a34a' : isRed ? '#dc2626' : '#1e293b';
+    ctx.beginPath();
+    ctx.moveTo(centerX, centerY);
+    ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    const textAngle = startAngle + segmentAngle / 2;
+    const textRadius = radius * 0.75;
+    const textX = centerX + Math.cos(textAngle) * textRadius;
+    const textY = centerY + Math.sin(textAngle) * textRadius;
+    ctx.save();
+    ctx.translate(textX, textY);
+    ctx.rotate(textAngle + Math.PI / 2);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 18px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = 'rgba(0,0,0,0.8)';
+    ctx.shadowBlur = 4;
+    ctx.fillText(num, 0, 0);
+    ctx.restore();
+  });
+})();
+
+// Chip selection
+document.querySelectorAll('.chip').forEach(c => {
+  c.addEventListener('click', () => {
+    chipValue = parseInt(c.dataset.value);
+    document.querySelectorAll('.chip').forEach(x => x.classList.remove('active'));
+    c.classList.add('active');
+    playThock();
+  });
+  c.addEventListener('mouseenter', playThock);
+});
+
+// Place bets
+document.querySelectorAll('.bet-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if(spinning || chipValue===0 || balance < chipValue) return;
+    const bet = btn.dataset.bet;
+    balance -= chipValue;
+    bets[bet] = (bets[bet]||0) + chipValue;
+    btn.classList.add('selected');
+    lastClickedBet = btn;
+    const amtEl = btn.querySelector('.bet-amount') || document.createElement('div');
+    amtEl.className = 'bet-amount';
+    amtEl.textContent = '$' + bets[bet];
+    if(!btn.querySelector('.bet-amount')) btn.appendChild(amtEl);
+    render();
+  });
+  btn.addEventListener('mouseenter', playThock);
+});
+
+// Clear bets
+document.getElementById('btnClear').addEventListener('click', () => {
+  if(spinning) return;
+  Object.values(bets).forEach(v => balance += v);
+  bets = {};
+  document.querySelectorAll('.bet-btn').forEach(b => {
+    b.classList.remove('selected');
+    const amt = b.querySelector('.bet-amount');
+    if(amt) amt.remove();
+  });
+  render();
+});
+
+// Half bank
+document.getElementById('btnHalfBank').addEventListener('click', () => {
+  if(!lastClickedBet || balance < 1 || spinning) return;
+  const amount = Math.floor(balance / 2);
+  if(amount > 0) {
+    balance -= amount;
+    const betType = lastClickedBet.dataset.bet;
+    bets[betType] = (bets[betType]||0) + amount;
+    lastClickedBet.classList.add('selected');
+    const amtEl = lastClickedBet.querySelector('.bet-amount') || document.createElement('div');
+    amtEl.className = 'bet-amount';
+    amtEl.textContent = '$' + bets[betType];
+    if(!lastClickedBet.querySelector('.bet-amount')) lastClickedBet.appendChild(amtEl);
+    render();
+  }
+});
+
+// All in
+document.getElementById('btnAllIn').addEventListener('click', () => {
+  if(!lastClickedBet || balance < 1 || spinning) return;
+  const amount = balance;
+  if(amount > 0) {
+    balance -= amount;
+    const betType = lastClickedBet.dataset.bet;
+    bets[betType] = (bets[betType]||0) + amount;
+    lastClickedBet.classList.add('selected');
+    const amtEl = lastClickedBet.querySelector('.bet-amount') || document.createElement('div');
+    amtEl.className = 'bet-amount';
+    amtEl.textContent = '$' + bets[betType];
+    if(!lastClickedBet.querySelector('.bet-amount')) lastClickedBet.appendChild(amtEl);
+    render();
+  }
+});
+
+// Spin
+document.getElementById('btnSpin').addEventListener('click', () => {
+  const total = Object.values(bets).reduce((a,b)=>a+b,0);
+  if(total===0 || spinning) return;
+  
+  spinning = true;
+  document.getElementById('btnSpin').disabled = true;
+  
+  const winNum = wheelNumbers[Math.floor(Math.random()*37)];
+  const isRed = reds.includes(winNum);
+  const isBlack = blacks.includes(winNum);
+  const isEven = winNum!==0 && winNum%2===0;
+  const isOdd = winNum!==0 && winNum%2===1;
+  const isLow = winNum>=1 && winNum<=18;
+  const isHigh = winNum>=19 && winNum<=36;
+  
+  const result = document.getElementById('result');
+  const wheel = document.getElementById('wheel');
+  
+  wheel.style.transform = 'rotate(' + (1800 + Math.random()*360) + 'deg)';
+  document.getElementById('resultLabel').textContent = 'Spinning...';
+  
+  let count = 0;
+  const maxCount = 60;
+  
+  function flash() {
+    if(count >= maxCount) {
+      result.textContent = winNum;
+      result.className = 'result ' + (isRed?'red':isBlack?'black':'');
+      result.style.transform = 'scale(1.3)';
+      setTimeout(() => result.style.transform = 'scale(1)', 200);
+      
+      try {
+        const t = thockCtx.currentTime;
+        [523,659,784].forEach((f,i) => {
+          const o = thockCtx.createOscillator();
+          const g = thockCtx.createGain();
+          o.connect(g); g.connect(thockCtx.destination);
+          o.frequency.value = f;
+          g.gain.setValueAtTime(0.15, t+i*0.05);
+          g.gain.exponentialRampToValueAtTime(0.001, t+i*0.05+0.4);
+          o.start(t+i*0.05); o.stop(t+i*0.05+0.4);
+        });
+      } catch(e) {}
+      
+      setTimeout(() => {
+        let win = 0;
+        if(bets.red && isRed) win += bets.red * 2;
+        if(bets.black && isBlack) win += bets.black * 2;
+        if(bets.even && isEven) win += bets.even * 2;
+        if(bets.odd && isOdd) win += bets.odd * 2;
+        if(bets.low && isLow) win += bets.low * 2;
+        if(bets.high && isHigh) win += bets.high * 2;
+        
+        const betTotal = Object.values(bets).reduce((a,b)=>a+b,0);
+        balance += win;
+        netProfit += (win - betTotal);
+        
+        if(win > 0) {
+          spinsWon++;
+          streak++;
+          document.getElementById('resultLabel').textContent = '🎉 Won $'+win+'!';
+        } else {
+          spinsLost++;
+          streak = 0;
+          document.getElementById('resultLabel').textContent = '💸 Lost $'+betTotal;
+        }
+        
+        bets = {};
+        document.querySelectorAll('.bet-btn').forEach(b => {
+          b.classList.remove('selected');
+          const amt = b.querySelector('.bet-amount');
+          if(amt) amt.remove();
+        });
+        
+        spinning = false;
+        document.getElementById('btnSpin').disabled = false;
+        render();
+      }, 800);
+      return;
+    }
+    
+    const rnd = wheelNumbers[Math.floor(Math.random()*37)];
+    const rIsRed = reds.includes(rnd);
+    result.textContent = rnd;
+    result.className = 'result ' + (rIsRed?'red':'black');
+    
+    if(count % 3 === 0) {
+      try {
+        const t = thockCtx.currentTime;
+        const o = thockCtx.createOscillator();
+        const g = thockCtx.createGain();
+        o.connect(g); g.connect(thockCtx.destination);
+        o.frequency.value = 800;
+        g.gain.setValueAtTime(0.08, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t+0.05);
+        o.start(t); o.stop(t+0.05);
+      } catch(e) {}
+    }
+    
+    count++;
+    const progress = count / maxCount;
+    const interval = 30 + (progress * progress * 180);
+    setTimeout(flash, interval);
+  }
+  
+  flash();
+});
+
+// Restart
+document.getElementById('btnRestart').addEventListener('click', () => {
+  if(confirm('Start fresh with $500? This will reset everything including vault and stats.')) {
+    balance = 500; vault = 0; netProfit = 0; streak = 0;
+    spinsWon = 0; spinsLost = 0; bets = {}; chipValue = 0;
+    spinning = false;
+    document.getElementById('btnSpin').disabled = false;
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    document.querySelectorAll('.bet-btn').forEach(b => {
+      b.classList.remove('selected');
+      const amt = b.querySelector('.bet-amount');
+      if(amt) amt.remove();
+    });
+    document.getElementById('wheel').style.transform = 'rotate(0deg)';
+    document.getElementById('result').textContent = '-';
+    document.getElementById('resultLabel').textContent = 'Fresh start! Place your bets';
+    document.getElementById('vaultInput').value = '';
+    render();
+  }
+});
+
+// Vault
+document.getElementById('btnDeposit').addEventListener('click', () => {
+  const amt = parseInt(document.getElementById('vaultInput').value);
+  if(!amt || amt<=0 || amt>balance) return;
+  balance -= amt; vault += amt;
+  document.getElementById('vaultInput').value = '';
+  showVaultMsg('Deposited $'+amt, 'ok');
+  render();
+});
+
+document.getElementById('btnWithdraw').addEventListener('click', () => {
+  const amt = parseInt(document.getElementById('vaultInput').value);
+  if(!amt || amt<=0 || amt>vault) return;
+  vault -= amt; balance += amt;
+  document.getElementById('vaultInput').value = '';
+  showVaultMsg('Withdrew $'+amt, 'ok');
+  render();
+});
+
+function showVaultMsg(text, type) {
+  const el = document.getElementById('vaultMsg');
+  el.textContent = text;
+  el.className = 'vault-msg '+type;
+  setTimeout(() => el.textContent='', 2000);
+}
+
+// Rules modal
+document.getElementById('btnRules').addEventListener('click', () => {
+  document.getElementById('rulesModal').classList.add('open');
+});
+document.getElementById('closeRules').addEventListener('click', () => {
+  document.getElementById('rulesModal').classList.remove('open');
+});
+document.getElementById('rulesModal').addEventListener('click', (e) => {
+  if(e.target === e.currentTarget) e.currentTarget.classList.remove('open');
+});
+
+// Render
+function render() {
+  document.getElementById('balance').textContent = '$'+balance;
+  document.getElementById('totalBet').textContent = '$'+Object.values(bets).reduce((a,b)=>a+b,0);
+  document.getElementById('vaultAmount').textContent = '$'+vault;
+  document.getElementById('netProfit').textContent = (netProfit>=0?'+$':'-$')+Math.abs(netProfit);
+  document.getElementById('netProfit').className = 'svalue '+(netProfit>0?'good':netProfit<0?'bad':'');
+  document.getElementById('streak').textContent = streak;
+  document.getElementById('streakLabel').textContent = streak>=3?'🔥 Hot streak!':'Current streak';
+  document.getElementById('spinsWon').textContent = spinsWon;
+  document.getElementById('spinsLost').textContent = spinsLost;
+}
+
+// Attach thock to buttons
+document.querySelectorAll('button').forEach(el => {
+  el.addEventListener('mouseenter', playThock);
+});
+
+render();
+</script>
+
+</body>
+</html>
